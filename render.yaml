@@ -18,6 +18,7 @@ services:
   - type: web
     name: mfaq-backend
     runtime: python
+    pythonVersion: "3.11.9"    # Explicit pin — runtime.txt is ignored by newer Render
     region: singapore          # Closest region to India (lower latency)
     plan: free                 # Upgrade to Starter ($7/mo) to avoid spin-down
     buildCommand: pip install -r requirements.txt
