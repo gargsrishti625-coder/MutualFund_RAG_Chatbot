@@ -1,0 +1,163 @@
+name: Daily Mutual Fund Data Ingestion
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Triggers
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  schedule:
+    # 9:15 AM IST = 03:45 UTC  (IST is UTC+5:30)
+    - cron: '45 3 * * *'
+
+  # Allow manual re-ingestion from the GitHub Actions UI or API
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual trigger (optional)'
+        required: false
+        default: 'Manual re-ingestion'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Permissions
+# ─────────────────────────────────────────────────────────────────────────────
+permissions:
+  contents: read
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Prevent concurrent runs — cancel the older one if a new run starts while
+# the previous is still in progress (e.g. manual trigger during scheduled run).
+# ─────────────────────────────────────────────────────────────────────────────
+concurrency:
+  group: ingestion-pipeline
+  cancel-in-progress: true
+
+jobs:
+  ingest:
+    name: Scrape → Chunk → Embed → Push to ChromaDB Cloud
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python setup ────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'            # caches pip's download cache across runs
+
+      # ── 3. Install Python dependencies ────────────────────────────────────
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ── 4. Cache HuggingFace embedding model ───────────────────────────────
+      # BAAI/bge-small-en-v1.5 is ~130 MB. Downloading it on every run wastes
+      # ~30 seconds and bandwidth. We cache the HuggingFace hub directory
+      # and restore it on subsequent runs — the model is only re-downloaded
+      # when the cache key changes (i.e. when the model name changes).
+      - name: Cache HuggingFace model (bge-small-en-v1.5)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-bge-small-en-v1.5
+
+      # ── 5. Install Playwright Chromium ─────────────────────────────────────
+      # Used as a JS-rendering fallback in the scraper when requests alone
+      # cannot fetch the page. The `|| true` prevents failure if playwright
+      # is removed from requirements.txt in future.
+      - name: Install Playwright Chromium
+        run: |
+          python -m playwright install chromium --with-deps || true
+
+      # ── 6. Run full ingestion pipeline ─────────────────────────────────────
+      #
+      # Pipeline stages (in order):
+      #   Phase 1.3   — Scraper:      Fetch 5 Groww fund pages         → data/raw/
+      #   Phase 1.3.1 — Normalizer:   Clean and standardize fields      → data/normalized/
+      #   Phase 1.4   — Chunker:      Build passages, split into chunks
+      #   Phase 1.5   — Embedder:     Embed chunks via bge-small-en-v1.5 (local, $0)
+      #   Phase 1.6   — Vector Store: Drop + recreate ChromaDB Cloud collection
+      #
+      # Required GitHub Actions secrets (repo → Settings → Secrets → Actions):
+      #   CHROMA_API_KEY   — API key from trychroma.com dashboard
+      #   CHROMA_TENANT    — Tenant UUID from trychroma.com dashboard
+      #   CHROMA_DATABASE  — Database name created on trychroma.com
+      #
+      # Note: GROQ_API_KEY is NOT needed here — the ingestion pipeline uses
+      # a local embedding model (bge-small-en-v1.5) and does not call Groq.
+      # Groq is only used by the query pipeline (Phase 2.7) at runtime.
+      - name: Run ingestion pipeline
+        env:
+          CHROMA_API_KEY:  ${{ secrets.CHROMA_API_KEY }}
+          CHROMA_TENANT:   ${{ secrets.CHROMA_TENANT }}
+          CHROMA_DATABASE: ${{ secrets.CHROMA_DATABASE }}
+        run: |
+          cd ingestion
+          python run_pipeline.py
+
+      # ── 7. Upload raw scraped data ─────────────────────────────────────────
+      # Unprocessed scraper output — exactly what the HTML parser returned.
+      # Useful for auditing what was on Groww pages at scrape time.
+      - name: Upload raw data artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-data-${{ github.run_id }}
+          path: data/raw/
+          retention-days: 30
+          if-no-files-found: warn
+
+      # ── 8. Upload normalized data ──────────────────────────────────────────
+      # Cleaned field values after the normalizer — input to Phase 1.4 Chunker.
+      # Re-running chunker/embedder from this file avoids re-scraping.
+      - name: Upload normalized data artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: normalized-data-${{ github.run_id }}
+          path: data/normalized/
+          retention-days: 30
+          if-no-files-found: warn
+
+      # NOTE: No vector store artifact.
+      # Chunks are pushed directly to ChromaDB Cloud (trychroma.com) during the
+      # pipeline run. The collection persists there and is queried by the
+      # Streamlit app via the same CHROMA_* credentials.
+
+      # ── 9. Upload pipeline logs ────────────────────────────────────────────
+      - name: Upload pipeline logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-logs-${{ github.run_id }}
+          path: logs/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      # ── 10. Job summary ────────────────────────────────────────────────────
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## Ingestion Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Trigger  | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Run ID   | ${{ github.run_id }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Schedule | 9:15 AM IST (03:45 UTC) daily |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "| Manual reason | ${{ github.event.inputs.reason }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pipeline stages" >> $GITHUB_STEP_SUMMARY
+          echo "| Phase | Stage | Output |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 1.3 | Scraper | data/raw/scrape_\<date\>.json |" >> $GITHUB_STEP_SUMMARY
+          echo "| 1.3.1 | Normalizer | data/normalized/normalized_\<date\>.json |" >> $GITHUB_STEP_SUMMARY
+          echo "| 1.4 | Chunker | in-memory chunks |" >> $GITHUB_STEP_SUMMARY
+          echo "| 1.5 | Embedder (bge-small-en-v1.5) | in-memory 384-dim vectors |" >> $GITHUB_STEP_SUMMARY
+          echo "| 1.6 | Vector Store | ChromaDB Cloud — mutual_fund_faq collection |" >> $GITHUB_STEP_SUMMARY

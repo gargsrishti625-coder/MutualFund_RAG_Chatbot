@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mutual Fund FAQ — API Test UI</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --surface2:  #22263a;
+      --border:    #2e3250;
+      --accent:    #4f6ef7;
+      --accent-h:  #3a55d4;
+      --danger:    #e05252;
+      --success:   #3ecf8e;
+      --warn:      #f5a623;
+      --text:      #e8eaf0;
+      --text-muted:#8a8fa8;
+      --radius:    10px;
+      --sidebar-w: 280px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ──────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 16px 12px;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    #sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #sidebar-header .logo {
+      width: 32px; height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+
+    #sidebar-header h2 {
+      font-size: 13px; font-weight: 600;
+      line-height: 1.3; color: var(--text);
+    }
+
+    #sidebar-header h2 span { color: var(--text-muted); font-weight: 400; }
+
+    /* health pill */
+    #health-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; padding: 3px 8px;
+      border-radius: 20px; border: 1px solid var(--border);
+      color: var(--text-muted); cursor: pointer; user-select: none;
+      transition: border-color .2s;
+      margin-left: auto; flex-shrink: 0;
+    }
+    #health-pill .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--text-muted);
+      transition: background .3s;
+    }
+    #health-pill.ok .dot   { background: var(--success); }
+    #health-pill.err .dot  { background: var(--danger); }
+
+    /* new session btn */
+    #btn-new-session {
+      background: var(--accent);
+      color: #fff; border: none; border-radius: var(--radius);
+      padding: 9px 12px; font-size: 13px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center;
+      gap: 7px; transition: background .15s;
+    }
+    #btn-new-session:hover { background: var(--accent-h); }
+
+    /* session list */
+    #session-list {
+      flex: 1; overflow-y: auto; display: flex;
+      flex-direction: column; gap: 4px;
+    }
+    #session-list::-webkit-scrollbar { width: 4px; }
+    #session-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .session-item {
+      display: flex; align-items: center;
+      gap: 6px; padding: 8px 10px;
+      border-radius: 8px; cursor: pointer;
+      border: 1px solid transparent;
+      transition: background .15s, border-color .15s;
+    }
+    .session-item:hover { background: var(--surface2); }
+    .session-item.active {
+      background: var(--surface2);
+      border-color: var(--accent);
+    }
+    .session-item .s-icon {
+      font-size: 14px; flex-shrink: 0;
+    }
+    .session-item .s-info { flex: 1; min-width: 0; }
+    .session-item .s-title {
+      font-size: 13px; font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .session-item .s-meta {
+      font-size: 10px; color: var(--text-muted); margin-top: 1px;
+    }
+    .session-item .s-actions {
+      display: flex; gap: 2px; opacity: 0;
+      transition: opacity .15s;
+    }
+    .session-item:hover .s-actions { opacity: 1; }
+
+    .icon-btn {
+      background: none; border: none;
+      color: var(--text-muted); cursor: pointer;
+      padding: 3px 5px; border-radius: 5px;
+      font-size: 12px; line-height: 1;
+      transition: color .15s, background .15s;
+    }
+    .icon-btn:hover { background: var(--surface); color: var(--text); }
+    .icon-btn.danger:hover { color: var(--danger); }
+
+    #session-list-empty {
+      font-size: 12px; color: var(--text-muted);
+      text-align: center; padding: 24px 12px;
+    }
+
+    /* ── Main area ────────────────────────────────────────────── */
+    #main {
+      flex: 1; display: flex; flex-direction: column;
+      overflow: hidden; background: var(--bg);
+    }
+
+    /* top bar */
+    #topbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 20px; border-bottom: 1px solid var(--border);
+      background: var(--surface); flex-shrink: 0;
+    }
+    #topbar .session-title-display {
+      font-size: 15px; font-weight: 600; flex: 1;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #topbar .session-title-display.placeholder {
+      color: var(--text-muted); font-weight: 400;
+    }
+
+    /* messages */
+    #chat-area {
+      flex: 1; overflow-y: auto;
+      padding: 24px 20px; display: flex;
+      flex-direction: column; gap: 16px;
+    }
+    #chat-area::-webkit-scrollbar { width: 5px; }
+    #chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    #empty-chat {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; color: var(--text-muted);
+      text-align: center; padding: 40px;
+    }
+    #empty-chat .big-icon { font-size: 40px; }
+    #empty-chat h3 { font-size: 16px; font-weight: 600; color: var(--text); }
+    #empty-chat p  { font-size: 13px; max-width: 340px; line-height: 1.6; }
+
+    .message-row {
+      display: flex; gap: 10px;
+      animation: fadeIn .2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } }
+
+    .message-row.user { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 32px; height: 32px; border-radius: 8px;
+      flex-shrink: 0; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 700;
+    }
+    .message-row.user   .avatar { background: var(--accent); }
+    .message-row.assistant .avatar { background: var(--surface2); border: 1px solid var(--border); }
+
+    .bubble {
+      max-width: 72%; padding: 12px 14px;
+      border-radius: var(--radius); font-size: 14px; line-height: 1.6;
+    }
+    .message-row.user .bubble {
+      background: var(--accent);
+      border-bottom-right-radius: 3px;
+    }
+    .message-row.assistant .bubble {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 3px;
+    }
+    .bubble .bubble-meta {
+      margin-top: 8px; padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,.1);
+      display: flex; flex-wrap: wrap; gap: 8px;
+      font-size: 11px;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge.answer  { background: rgba(62,207,142,.15); color: var(--success); }
+    .badge.refusal { background: rgba(245,166,35,.15);  color: var(--warn); }
+
+    .source-link {
+      color: var(--accent); text-decoration: none; font-size: 11px;
+      display: inline-flex; align-items: center; gap: 3px;
+    }
+    .source-link:hover { text-decoration: underline; }
+
+    .timestamp { font-size: 10px; color: var(--text-muted); margin-top: 3px; text-align: right; }
+    .message-row.user .timestamp { text-align: right; }
+    .message-row.assistant .timestamp { text-align: left; }
+
+    /* typing indicator */
+    .typing-bubble {
+      display: flex; gap: 4px; align-items: center; padding: 14px;
+    }
+    .typing-bubble span {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--text-muted);
+      animation: bounce .9s infinite;
+    }
+    .typing-bubble span:nth-child(2) { animation-delay: .15s; }
+    .typing-bubble span:nth-child(3) { animation-delay: .30s; }
+    @keyframes bounce {
+      0%,80%,100% { transform: translateY(0); }
+      40%         { transform: translateY(-6px); }
+    }
+
+    /* input bar */
+    #input-bar {
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      background: var(--surface); display: flex; gap: 10px;
+      align-items: flex-end; flex-shrink: 0;
+    }
+    #input-bar.disabled { opacity: .5; pointer-events: none; }
+
+    #query-input {
+      flex: 1; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text); font-size: 14px; padding: 10px 14px;
+      resize: none; outline: none; max-height: 140px; min-height: 42px;
+      line-height: 1.5; transition: border-color .2s;
+      font-family: inherit;
+    }
+    #query-input:focus { border-color: var(--accent); }
+    #query-input::placeholder { color: var(--text-muted); }
+
+    #btn-send {
+      background: var(--accent); border: none;
+      border-radius: var(--radius); color: #fff;
+      padding: 10px 18px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+      flex-shrink: 0; height: 42px;
+    }
+    #btn-send:hover { background: var(--accent-h); }
+    #btn-send:disabled { background: var(--surface2); color: var(--text-muted); cursor: not-allowed; }
+
+    /* ── Modal ────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; animation: fadeIn .15s ease;
+    }
+    .modal {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 24px; width: 360px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .modal h3 { font-size: 15px; font-weight: 600; }
+    .modal input {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 13px;
+      padding: 9px 12px; outline: none; width: 100%;
+      transition: border-color .2s; font-family: inherit;
+    }
+    .modal input:focus { border-color: var(--accent); }
+    .modal .modal-actions {
+      display: flex; gap: 8px; justify-content: flex-end;
+    }
+    .modal .btn-primary {
+      background: var(--accent); border: none;
+      color: #fff; border-radius: 8px;
+      padding: 8px 18px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+    }
+    .modal .btn-primary:hover { background: var(--accent-h); }
+    .modal .btn-secondary {
+      background: none; border: 1px solid var(--border);
+      color: var(--text-muted); border-radius: 8px;
+      padding: 8px 16px; font-size: 13px; cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .modal .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
+
+    /* ── Toast ────────────────────────────────────────────────── */
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 8px; z-index: 200;
+    }
+    .toast {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 16px;
+      font-size: 13px; color: var(--text);
+      animation: slideIn .2s ease;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .toast.error  { border-color: var(--danger);  color: var(--danger); }
+    .toast.success{ border-color: var(--success); color: var(--success); }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(20px); }
+    }
+
+    /* ── API Base URL bar ─────────────────────────────────────── */
+    #api-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    #api-bar label { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+    #api-base-input {
+      flex: 1; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-size: 12px; padding: 5px 10px;
+      outline: none; font-family: monospace;
+      transition: border-color .2s;
+    }
+    #api-base-input:focus { border-color: var(--accent); }
+    #btn-check-health {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text-muted); border-radius: 6px;
+      padding: 5px 12px; font-size: 11px; cursor: pointer;
+      transition: border-color .15s, color .15s; white-space: nowrap;
+    }
+    #btn-check-health:hover { border-color: var(--accent); color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────── -->
+<aside id="sidebar">
+  <div id="sidebar-header">
+    <div class="logo">💹</div>
+    <h2>FAQ Assistant<br><span>API Test UI</span></h2>
+    <div id="health-pill" title="Click to check /health">
+      <span class="dot"></span><span id="health-text">—</span>
+    </div>
+  </div>
+
+  <!-- API base URL -->
+  <div id="api-bar" style="margin:0 -12px; padding:8px 12px;">
+    <label>API</label>
+    <input id="api-base-input" type="text" value="http://localhost:8000" spellcheck="false"/>
+    <button id="btn-check-health">Check</button>
+  </div>
+
+  <button id="btn-new-session">＋ New Conversation</button>
+
+  <div id="session-list">
+    <div id="session-list-empty">No sessions yet.<br>Click "New Conversation" to start.</div>
+  </div>
+</aside>
+
+<!-- ── Main ────────────────────────────────────────── -->
+<main id="main">
+  <div id="topbar">
+    <span id="title-display" class="session-title-display placeholder">Select or create a session</span>
+    <button class="icon-btn" id="btn-rename-current" title="Rename session" style="font-size:15px; opacity:.7; display:none">✏️</button>
+  </div>
+
+  <div id="chat-area">
+    <div id="empty-chat">
+      <div class="big-icon">🔍</div>
+      <h3>Mutual Fund FAQ Assistant</h3>
+      <p>Ask factual questions about HDFC mutual fund schemes — NAV, expense ratio, returns, fund managers, and more.</p>
+    </div>
+  </div>
+
+  <div id="input-bar">
+    <textarea id="query-input" rows="1" placeholder="Ask about HDFC mutual funds…"></textarea>
+    <button id="btn-send">Send</button>
+  </div>
+</main>
+
+<!-- ── Toast container ─────────────────────────────── -->
+<div id="toast-container"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════
+   State
+════════════════════════════════════════════════════════ */
+const state = {
+  apiBase: 'http://localhost:8000',
+  sessions: [],         // SessionResponse[]
+  activeSession: null,  // session_id string | null
+};
+
+/* ════════════════════════════════════════════════════════
+   Utilities
+════════════════════════════════════════════════════════ */
+function apiBase() { return document.getElementById('api-base-input').value.replace(/\/$/, ''); }
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(apiBase() + path, {
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    ...opts,
+  });
+  if (res.status === 204) return null;
+  const data = await res.json();
+  if (!res.ok) throw Object.assign(new Error(data.detail ?? data.error ?? 'API error'), { status: res.status, data });
+  return data;
+}
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+function fmtTime(isoStr) {
+  if (!isoStr) return '';
+  try {
+    const d = new Date(isoStr);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch { return isoStr; }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+}
+
+function openModal({ title, placeholder, defaultValue = '', onConfirm }) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>${title}</h3>
+      <input type="text" id="modal-input" value="${defaultValue}" placeholder="${placeholder}" maxlength="100"/>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="btn-primary"   id="modal-ok">Confirm</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const input = overlay.querySelector('#modal-input');
+  input.focus(); input.select();
+  const close = () => overlay.remove();
+  overlay.querySelector('#modal-cancel').onclick = close;
+  overlay.querySelector('#modal-ok').onclick = () => {
+    const val = input.value.trim();
+    if (!val) { input.focus(); return; }
+    close(); onConfirm(val);
+  };
+  input.onkeydown = e => {
+    if (e.key === 'Enter') overlay.querySelector('#modal-ok').click();
+    if (e.key === 'Escape') close();
+  };
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+}
+
+/* ════════════════════════════════════════════════════════
+   Health check
+════════════════════════════════════════════════════════ */
+async function checkHealth() {
+  const pill = document.getElementById('health-pill');
+  const txt  = document.getElementById('health-text');
+  pill.className = 'health-pill';
+  txt.textContent = '…';
+  try {
+    const data = await apiFetch('/health');
+    pill.classList.add('ok');
+    txt.textContent = data.status === 'ok' ? `v${data.version}` : data.status;
+    toast(`Server ok — v${data.version}`, 'success');
+  } catch (err) {
+    pill.classList.add('err');
+    txt.textContent = 'down';
+    toast(`Health check failed: ${err.message}`, 'error');
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   Sessions
+════════════════════════════════════════════════════════ */
+async function loadSessions() {
+  try {
+    state.sessions = await apiFetch('/sessions');
+    renderSidebar();
+  } catch (err) {
+    toast(`Failed to load sessions: ${err.message}`, 'error');
+  }
+}
+
+async function createSession(title) {
+  try {
+    const s = await apiFetch('/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    });
+    state.sessions.unshift(s);
+    renderSidebar();
+    await selectSession(s.session_id);
+    toast(`Session "${title}" created`, 'success');
+  } catch (err) {
+    toast(`Create failed: ${err.message}`, 'error');
+  }
+}
+
+async function renameSession(session_id, newTitle) {
+  try {
+    const updated = await apiFetch(`/sessions/${session_id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title: newTitle }),
+    });
+    const idx = state.sessions.findIndex(s => s.session_id === session_id);
+    if (idx !== -1) state.sessions[idx] = updated;
+    renderSidebar();
+    if (state.activeSession === session_id) {
+      document.getElementById('title-display').textContent = newTitle;
+    }
+    toast(`Renamed to "${newTitle}"`, 'success');
+  } catch (err) {
+    toast(`Rename failed: ${err.message}`, 'error');
+  }
+}
+
+async function deleteSession(session_id) {
+  try {
+    await apiFetch(`/sessions/${session_id}`, { method: 'DELETE' });
+    state.sessions = state.sessions.filter(s => s.session_id !== session_id);
+    if (state.activeSession === session_id) {
+      state.activeSession = null;
+      clearChat();
+      document.getElementById('title-display').textContent = 'Select or create a session';
+      document.getElementById('title-display').classList.add('placeholder');
+      document.getElementById('btn-rename-current').style.display = 'none';
+    }
+    renderSidebar();
+    toast('Session deleted');
+  } catch (err) {
+    toast(`Delete failed: ${err.message}`, 'error');
+  }
+}
+
+async function selectSession(session_id) {
+  state.activeSession = session_id;
+  renderSidebar();
+  clearChat();
+
+  try {
+    const detail = await apiFetch(`/sessions/${session_id}`);
+    const titleEl = document.getElementById('title-display');
+    titleEl.textContent = detail.title;
+    titleEl.classList.remove('placeholder');
+    document.getElementById('btn-rename-current').style.display = '';
+
+    // Render existing history
+    if (detail.history.length === 0) {
+      showEmptyChat();
+    } else {
+      hideEmptyChat();
+      for (const msg of detail.history) {
+        appendBubble(msg.role, msg.text, msg.timestamp, null);
+      }
+    }
+    setInputEnabled(true);
+  } catch (err) {
+    toast(`Failed to load session: ${err.message}`, 'error');
+    state.activeSession = null;
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   Messaging
+════════════════════════════════════════════════════════ */
+async function sendMessage(query) {
+  // Auto-create a session if none is active
+  if (!state.activeSession) {
+    try {
+      const s = await apiFetch('/sessions', {
+        method: 'POST',
+        body: JSON.stringify({ title: 'New conversation' }),
+      });
+      state.sessions.unshift(s);
+      state.activeSession = s.session_id;
+      const titleEl = document.getElementById('title-display');
+      titleEl.textContent = s.title;
+      titleEl.classList.remove('placeholder');
+      document.getElementById('btn-rename-current').style.display = '';
+      renderSidebar();
+    } catch (err) {
+      toast(`Could not create session: ${err.message}`, 'error');
+      return;
+    }
+  }
+
+  hideEmptyChat();
+  appendBubble('user', query, new Date().toISOString(), null);
+
+  const typingRow = appendTyping();
+  setInputEnabled(false);
+
+  try {
+    const resp = await apiFetch(`/sessions/${state.activeSession}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    });
+    typingRow.remove();
+    appendBubble('assistant', resp.text, new Date().toISOString(), resp);
+
+    // Update session message_count in sidebar
+    const s = state.sessions.find(s => s.session_id === state.activeSession);
+    if (s) { s.message_count += 2; renderSidebar(); }
+  } catch (err) {
+    typingRow.remove();
+    const errText = err.data?.detail ?? err.message;
+    appendBubble('assistant', `⚠ Error: ${errText}`, new Date().toISOString(), null, true);
+    toast(`Request failed: ${err.message}`, 'error');
+  } finally {
+    setInputEnabled(true);
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   Render helpers
+════════════════════════════════════════════════════════ */
+function renderSidebar() {
+  const list = document.getElementById('session-list');
+
+  if (state.sessions.length === 0) {
+    list.innerHTML = '<div id="session-list-empty">No sessions yet.<br>Click "New Conversation" to start.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  for (const s of state.sessions) {
+    const item = document.createElement('div');
+    item.className = 'session-item' + (s.session_id === state.activeSession ? ' active' : '');
+    item.dataset.id = s.session_id;
+    item.innerHTML = `
+      <span class="s-icon">💬</span>
+      <div class="s-info">
+        <div class="s-title" title="${s.title}">${s.title}</div>
+        <div class="s-meta">${s.message_count} msg${s.message_count !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="s-actions">
+        <button class="icon-btn" data-action="rename" title="Rename">✏️</button>
+        <button class="icon-btn danger" data-action="delete" title="Delete">🗑</button>
+      </div>`;
+
+    item.querySelector('[data-action="rename"]').onclick = e => {
+      e.stopPropagation();
+      openModal({ title: 'Rename session', placeholder: 'Session title', defaultValue: s.title,
+        onConfirm: title => renameSession(s.session_id, title) });
+    };
+    item.querySelector('[data-action="delete"]').onclick = e => {
+      e.stopPropagation();
+      if (confirm(`Delete "${s.title}"?`)) deleteSession(s.session_id);
+    };
+    item.onclick = () => selectSession(s.session_id);
+    list.appendChild(item);
+  }
+}
+
+function appendBubble(role, text, timestamp, resp, isError = false) {
+  const area = document.getElementById('chat-area');
+  const row  = document.createElement('div');
+  row.className = `message-row ${role}`;
+
+  const avatar = role === 'user' ? 'U' : '🤖';
+  const avatarEl = `<div class="avatar">${avatar}</div>`;
+
+  // Meta footer for assistant responses
+  let metaHtml = '';
+  if (role === 'assistant' && resp) {
+    const badgeClass = resp.type === 'answer' ? 'answer' : 'refusal';
+    const badgeLabel = resp.type === 'answer' ? '✓ Answer' : '⚑ Refusal';
+    let links = '';
+    if (resp.source_url) {
+      links += `<a class="source-link" href="${resp.source_url}" target="_blank" rel="noreferrer">🔗 Source</a>`;
+    }
+    if (resp.last_updated) {
+      links += `<span style="color:var(--text-muted)">Updated ${resp.last_updated}</span>`;
+    }
+    if (resp.redirect_url) {
+      links += `<a class="source-link" href="${resp.redirect_url}" target="_blank" rel="noreferrer">↗ Learn more</a>`;
+    }
+    metaHtml = `<div class="bubble-meta"><span class="badge ${badgeClass}">${badgeLabel}</span>${links}</div>`;
+  }
+
+  const bubbleStyle = isError ? 'background:rgba(224,82,82,.15);border-color:var(--danger);' : '';
+  row.innerHTML = `
+    ${avatarEl}
+    <div>
+      <div class="bubble" style="${bubbleStyle}">${escapeHtml(text)}${metaHtml}</div>
+      <div class="timestamp">${fmtTime(timestamp)}</div>
+    </div>`;
+
+  area.appendChild(row);
+  area.scrollTop = area.scrollHeight;
+  return row;
+}
+
+function appendTyping() {
+  const area = document.getElementById('chat-area');
+  const row  = document.createElement('div');
+  row.className = 'message-row assistant';
+  row.innerHTML = `
+    <div class="avatar">🤖</div>
+    <div class="bubble" style="padding:10px 14px;">
+      <div class="typing-bubble">
+        <span></span><span></span><span></span>
+      </div>
+    </div>`;
+  area.appendChild(row);
+  area.scrollTop = area.scrollHeight;
+  return row;
+}
+
+function showEmptyChat() {
+  let el = document.getElementById('empty-chat');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'empty-chat';
+    el.innerHTML = `
+      <div class="big-icon">🔍</div>
+      <h3>Mutual Fund FAQ Assistant</h3>
+      <p>Ask factual questions about HDFC mutual fund schemes — NAV, expense ratio, returns, fund managers, and more.</p>`;
+    document.getElementById('chat-area').appendChild(el);
+  }
+  el.style.display = 'flex';
+}
+
+function hideEmptyChat() {
+  const el = document.getElementById('empty-chat');
+  if (el) el.style.display = 'none';
+}
+
+function clearChat() {
+  const area = document.getElementById('chat-area');
+  area.innerHTML = '';
+  showEmptyChat();
+}
+
+function setInputEnabled(enabled) {
+  const btn   = document.getElementById('btn-send');
+  const input = document.getElementById('query-input');
+  btn.disabled  = !enabled;
+  input.disabled = !enabled;
+  if (enabled) input.focus();
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+}
+
+/* ════════════════════════════════════════════════════════
+   Event listeners
+════════════════════════════════════════════════════════ */
+document.getElementById('btn-new-session').onclick = () => {
+  openModal({ title: 'New Conversation', placeholder: 'Session title', defaultValue: 'New conversation',
+    onConfirm: title => createSession(title) });
+};
+
+document.getElementById('health-pill').onclick = checkHealth;
+document.getElementById('btn-check-health').onclick = checkHealth;
+
+document.getElementById('btn-rename-current').onclick = () => {
+  if (!state.activeSession) return;
+  const s = state.sessions.find(s => s.session_id === state.activeSession);
+  if (!s) return;
+  openModal({ title: 'Rename session', placeholder: 'Session title', defaultValue: s.title,
+    onConfirm: title => renameSession(state.activeSession, title) });
+};
+
+const queryInput = document.getElementById('query-input');
+const sendBtn    = document.getElementById('btn-send');
+
+queryInput.addEventListener('input', () => autoResize(queryInput));
+queryInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendBtn.click();
+  }
+});
+
+sendBtn.onclick = () => {
+  const q = queryInput.value.trim();
+  if (!q) return;
+  queryInput.value = '';
+  autoResize(queryInput);
+  sendMessage(q);
+};
+
+/* ════════════════════════════════════════════════════════
+   Init
+════════════════════════════════════════════════════════ */
+(async () => {
+  await checkHealth();
+  await loadSessions();
+})();
+</script>
+</body>
+</html>

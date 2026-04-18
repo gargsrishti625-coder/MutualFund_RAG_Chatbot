@@ -1,0 +1,63 @@
+# render.yaml — Infrastructure-as-Code for Render.com
+#
+# Declares both production services in one file.
+# After pushing this to the repo, go to:
+#   Render dashboard → New → Blueprint → connect this repo
+# Render will create both services automatically.
+#
+# ⚠  Secrets marked sync:false must be set manually in the Render dashboard
+#    (Environment tab of each service) — they are never committed to git.
+#
+# Deployment order:
+#   1. mfaq-backend  (deploy first — get its URL)
+#   2. mfaq-frontend (set BACKEND_URL = backend URL, then deploy)
+
+services:
+
+  # ── Service 1: FastAPI Backend ──────────────────────────────────────────
+  - type: web
+    name: mfaq-backend
+    runtime: python
+    region: singapore          # Closest region to India (lower latency)
+    plan: free                 # Upgrade to Starter ($7/mo) to avoid spin-down
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health   # Render pings this to confirm the service is live
+
+    envVars:
+      # ── Groq (LLM) ──────────────────────────────────────────────────
+      - key: GROQ_API_KEY
+        sync: false            # Set in Render dashboard → never in git
+
+      # ── ChromaDB Cloud (vector store) ───────────────────────────────
+      - key: CHROMA_API_KEY
+        sync: false
+      - key: CHROMA_TENANT
+        sync: false
+      - key: CHROMA_DATABASE
+        sync: false
+
+      # ── CORS ─────────────────────────────────────────────────────────
+      # After frontend is deployed, update this to the actual frontend URL.
+      # Multiple origins: comma-separated, e.g. https://a.onrender.com,https://b.onrender.com
+      - key: ALLOWED_ORIGINS
+        sync: false            # e.g. https://mfaq-frontend.onrender.com
+
+  # ── Service 2: Next.js Frontend ────────────────────────────────────────
+  - type: web
+    name: mfaq-frontend
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: frontend          # All build commands run from /frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start    # next start — uses $PORT from Render automatically
+
+    envVars:
+      # ── Backend proxy target ─────────────────────────────────────────
+      # Set to the mfaq-backend Render URL after backend is deployed.
+      - key: BACKEND_URL
+        sync: false            # e.g. https://mfaq-backend.onrender.com
+
+      - key: NODE_ENV
+        value: production

@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Material Symbols config ─────────────────────────────────────────── */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-size: 20px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* ── Base typography ─────────────────────────────────────────────────── */
+body {
+  font-family: 'Public Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, .font-headline {
+  font-family: 'Manrope', sans-serif;
+}
+
+/* ── Custom scrollbar ────────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb  { background: #bacac1; border-radius: 4px; }
+::-webkit-scrollbar-track  { background: transparent; }
+
+/* ── Textarea ─────────────────────────────────────────────────────────── */
+textarea:focus { outline: none; box-shadow: none; }
+
+/* ── Animate typing dots ─────────────────────────────────────────────── */
+@keyframes bounceDot {
+  0%, 80%, 100% { transform: translateY(0); }
+  40%           { transform: translateY(-6px); }
+}
+
+.typing-dot:nth-child(1) { animation: bounceDot 0.9s infinite 0ms; }
+.typing-dot:nth-child(2) { animation: bounceDot 0.9s infinite 150ms; }
+.typing-dot:nth-child(3) { animation: bounceDot 0.9s infinite 300ms; }
+
+/* ── Message fade-in ─────────────────────────────────────────────────── */
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.msg-enter { animation: msgIn 0.2s ease forwards; }

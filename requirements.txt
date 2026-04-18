@@ -1,0 +1,62 @@
+# ─────────────────────────────────────────────────────────
+# Phase 1.3 — Scraper
+# requests: HTTP fetching of Groww fund pages
+# beautifulsoup4 + lxml: HTML parsing and field extraction
+# playwright: headless Chromium fallback for JS-rendered pages
+# ─────────────────────────────────────────────────────────
+requests==2.32.3
+beautifulsoup4==4.12.3
+lxml==5.2.2
+playwright==1.44.0
+
+# ─────────────────────────────────────────────────────────
+# Phase 1.4 — Chunker
+# langchain-text-splitters: RecursiveCharacterTextSplitter
+# tiktoken: token-accurate chunk length measurement (cl100k_base)
+# ─────────────────────────────────────────────────────────
+langchain-text-splitters==0.2.4
+tiktoken==0.7.0
+
+# ─────────────────────────────────────────────────────────
+# Phase 1.5 — Embedder
+# sentence-transformers: BAAI/bge-small-en-v1.5 local embeddings
+# torch: CPU inference backend for sentence-transformers
+# (no OpenAI API key needed for embeddings — runs entirely locally)
+# ─────────────────────────────────────────────────────────
+sentence-transformers==3.0.1
+torch==2.3.1
+
+# ─────────────────────────────────────────────────────────
+# Phase 1.6 — Vector Store
+# chromadb: HttpClient for ChromaDB Cloud (trychroma.com)
+# ─────────────────────────────────────────────────────────
+chromadb==1.0.0
+
+# ─────────────────────────────────────────────────────────
+# Phase 2.7 — LLM Generation
+# groq: Groq LPU inference API (llama-3.3-70b-versatile)
+# (GROQ_API_KEY required — obtain from console.groq.com)
+# ─────────────────────────────────────────────────────────
+groq==1.2.0
+
+# ─────────────────────────────────────────────────────────
+# Phase 2.1 — UI
+# streamlit: chat interface for the FAQ assistant
+# ─────────────────────────────────────────────────────────
+streamlit==1.36.0
+
+# ─────────────────────────────────────────────────────────
+# Phase 5 — API & Application Layer
+# fastapi: REST API framework with auto-generated OpenAPI docs
+# uvicorn[standard]: ASGI server to run the FastAPI app
+# ─────────────────────────────────────────────────────────
+fastapi==0.115.9
+uvicorn[standard]==0.29.0
+
+# ─────────────────────────────────────────────────────────
+# Utilities
+# python-dotenv: load .env file for local development
+# pytz: IST timezone used in run_pipeline.py timestamps
+# ─────────────────────────────────────────────────────────
+python-dotenv==1.0.1
+pytz==2024.1
