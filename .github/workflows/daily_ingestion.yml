@@ -30,6 +30,13 @@ concurrency:
   group: ingestion-pipeline
   cancel-in-progress: true
 
+# Opt into Node.js 24 for all GitHub-hosted actions now, ahead of the
+# mandatory cutover on 2026-06-02. Removes the Node.js 20 deprecation
+# warning for actions/checkout, actions/setup-python, actions/cache,
+# and actions/upload-artifact.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   ingest:
     name: Scrape → Chunk → Embed → Push to ChromaDB Cloud
