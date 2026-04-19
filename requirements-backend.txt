@@ -1,0 +1,24 @@
+# ─────────────────────────────────────────────────────────
+# Backend-only dependencies for Render deployment.
+# Does NOT include torch / sentence-transformers — those are
+# only needed by the ingestion pipeline (GitHub Actions).
+# Query embedding uses fastembed (ONNX runtime, ~100 MB RAM)
+# instead of sentence-transformers (~500 MB RAM with PyTorch).
+# ─────────────────────────────────────────────────────────
+
+# Phase 2.4 — Query Embedder (ONNX, lightweight)
+fastembed==0.3.6
+
+# Phase 1.6 / 2.5 — Vector Store
+chromadb==1.0.0
+
+# Phase 2.7 — LLM Generation
+groq==1.2.0
+
+# Phase 5 — API & Application Layer
+fastapi==0.115.9
+uvicorn[standard]==0.29.0
+
+# Utilities
+python-dotenv==1.0.1
+pytz==2024.1
