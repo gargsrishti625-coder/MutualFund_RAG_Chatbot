@@ -18,7 +18,6 @@ services:
   - type: web
     name: mfaq-backend
     runtime: python
-    pythonVersion: "3.11.9"    # Explicit pin — runtime.txt is ignored by newer Render
     region: singapore          # Closest region to India (lower latency)
     plan: free                 # Upgrade to Starter ($7/mo) to avoid spin-down
     buildCommand: pip install -r requirements.txt
@@ -26,6 +25,12 @@ services:
     healthCheckPath: /health   # Render pings this to confirm the service is live
 
     envVars:
+      # ── Python version pin ───────────────────────────────────────────
+      # runtime.txt is ignored by newer Render runners (default is 3.14).
+      # PYTHON_VERSION env var is the documented way to pin for native Python.
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
       # ── Groq (LLM) ──────────────────────────────────────────────────
       - key: GROQ_API_KEY
         sync: false            # Set in Render dashboard → never in git
