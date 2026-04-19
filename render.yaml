@@ -49,21 +49,5 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false            # e.g. https://mfaq-frontend.onrender.com
 
-  # ── Service 2: Next.js Frontend ────────────────────────────────────────
-  - type: web
-    name: mfaq-frontend
-    runtime: node
-    region: singapore
-    plan: free
-    rootDir: frontend          # All build commands run from /frontend
-    buildCommand: npm ci && npm run build
-    startCommand: npm start    # next start — uses $PORT from Render automatically
-
-    envVars:
-      # ── Backend proxy target ─────────────────────────────────────────
-      # Set to the mfaq-backend Render URL after backend is deployed.
-      - key: BACKEND_URL
-        sync: false            # e.g. https://mfaq-backend.onrender.com
-
-      - key: NODE_ENV
-        value: production
+  # Frontend is deployed on Vercel (not Render).
+  # Set BACKEND_URL in Vercel project settings → Environment Variables.
